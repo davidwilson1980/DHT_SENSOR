@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <dht.h>
 #include <Adafruit_Sensor.h>
+#include <secrets.h>
 
 #ifdef ESP8266
   #include <ESP8266WiFi.h>
@@ -22,11 +23,11 @@
 
 DHT dht(DHT_apin, DHTTYPE);
 
-const char* ssid = "";
-const char* password = "";
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PW;
 
 
-const char broker[] = "";
+const char broker[] = BROKER;
 uint16_t port = 1883;
 
 
