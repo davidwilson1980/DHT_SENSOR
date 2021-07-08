@@ -2,6 +2,7 @@
 #include <dht.h>
 #include <Adafruit_Sensor.h>
 #include <secrets.h>
+#include <WiFiManager.h>
 
 #ifdef ESP8266
   #include <ESP8266WiFi.h>
