@@ -20,6 +20,7 @@
 #define MQTT_SENSOR_TOPIC "humidity/sensor1"
 #define uS_TO_S_FACTOR 1000000
 #define TIME_TO_SLEEP  300
+#define SENSITIVITY (3.3 / 1024.0)
 
 DHT dht(DHT_apin, DHTTYPE);
 
@@ -35,6 +36,7 @@ long lastMsg = 0;
 
 float temperature;
 float humidity;
+int batteryPct;
 
 
 WiFiClient espClient;
@@ -45,6 +47,8 @@ void setup_wifi();
 void callback(char* topic, byte* message, unsigned int length);
 void reconnect();
 void print_wakeup_reason();
+int getBatteryPercentage();
+float mapf(float x, float in_min, float in_max, float out_min, float out_max);
 
 void setup() {
 
@@ -89,10 +93,13 @@ void loop() {
     Serial.print(humString);
     Serial.print("%  ");
 
+    batteryPct = getBatteryPercentage();
+
     StaticJsonDocument<300> doc;
     doc["device"] = "Humi_Sensor";
     doc["temperature"] = tempString;
     doc["humidity"] = humString;
+    doc["BatteryPct"] = batteryPct;
 
     char buffer[256];
     serializeJsonPretty(doc, Serial);
@@ -151,6 +158,32 @@ void reconnect(){
       delay(5000);
     }
   }
+}
+
+int getBatteryPercentage(){
+    float batteryValue = analogRead(A0);
+    Serial.print("Raw battery value: ");
+    Serial.println(int(batteryValue));
+
+    batteryValue = batteryValue * SENSITIVITY;
+    Serial.print("Voltage: ");
+    Serial.print(batteryValue);
+    Serial.println("V");
+
+    batteryValue = mapf(batteryValue, 1.98, 3.09, 0, 100);
+    Serial.print("Battery percentage: ");
+    Serial.print(int(batteryValue));
+    Serial.println("%");
+
+    return batteryValue;
+
+}
+
+float mapf(float x, float in_min, float in_max, float out_min, float out_max){
+  float a = x - in_min;
+  float b = out_max - out_min;
+  float c = in_max - in_min;
+  return a * b / c + out_min;
 }
 #ifdef esp32
 void print_wakeup_reason(){
