@@ -6,11 +6,13 @@
 #ifdef ESP8266
   #include <ESP8266WiFi.h>
   #define DHT_apin 13
+  #define DHT_power 12
 #endif
 #ifdef ESP32
   #include <WiFi.h>
   #define DHT_apin 36
 #endif
+
 
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -60,35 +62,36 @@ void setup() {
   print_wakeup_reason();
 #endif
   //Initialiaze sensor
-  dht.begin();
-  delay(500);//Delay to let system boot
-  Serial.println("DHT22 Humidity & temperature Sensor\n\n");
-  delay(1000);//Wait before accessing Sensor
+
 
   //Initialize WIFI and wait till connected
-  
-  setup_wifi();
-  client.setServer(broker,port);
+  delay(500);//Delay to let system boot
+  Serial.println("DHT22 Humidity & temperature Sensor\n\n");
+  pinMode(DHT_power, OUTPUT);
+  digitalWrite(DHT_power,LOW);
+
   //client.setCallback(callback);
 
 }
 
 void loop() {
-  if (!client.connected()){
-    reconnect();
-  }
-  client.loop();
-
+    digitalWrite(DHT_power, HIGH);
+    delay(500);//wait for pin to become high and power the sensor
+    dht.begin();
+    delay(1000);//Wait before accessing Sensor
     temperature = dht.readTemperature()-TEMP_OFFSET;
+    humidity = dht.readHumidity();
+    digitalWrite(DHT_power, LOW);
+
     char tempString[8];
     dtostrf(temperature,1,2,tempString);
+
+    char humString[8];
+    dtostrf(humidity,1,2,humString);
+
     Serial.print("temperature = ");
     Serial.print(tempString); 
     Serial.println("C  ");
-
-    humidity = dht.readHumidity();
-    char humString[8];
-    dtostrf(humidity,1,2,humString);
     Serial.print("Current humidity = ");
     Serial.print(humString);
     Serial.print("%  ");
@@ -106,9 +109,17 @@ void loop() {
     Serial.println();
 
     serializeJson(doc, buffer);
+    setup_wifi();
+    client.setServer(broker,port);
+    if (!client.connected()){
+      reconnect();
+    }
+    client.loop();
 
     client.publish(MQTT_SENSOR_TOPIC, buffer);
-
+    delay(1000);
+    Serial.println("data published");
+    WiFi.disconnect();
     #ifdef esp32
       esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP*uS_TO_S_FACTOR);
       esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
