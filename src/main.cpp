@@ -75,19 +75,21 @@ void setup() {
 }
 
 void loop() {
-    digitalWrite(DHT_power, HIGH);
+    digitalWrite(DHT_power, HIGH); //power the sensor
     delay(500);//wait for pin to become high and power the sensor
     dht.begin();
     delay(1000);//Wait before accessing Sensor
     temperature = dht.readTemperature()-TEMP_OFFSET;
     humidity = dht.readHumidity();
-    digitalWrite(DHT_power, LOW);
+    digitalWrite(DHT_power, LOW); //power down sensor to save battery
 
     char tempString[8];
     dtostrf(temperature,1,2,tempString);
 
     char humString[8];
     dtostrf(humidity,1,2,humString);
+
+    float batteryRaw = analogRead(A0);
 
     Serial.print("temperature = ");
     Serial.print(tempString); 
@@ -103,23 +105,25 @@ void loop() {
     doc["temperature"] = tempString;
     doc["humidity"] = humString;
     doc["BatteryPct"] = batteryPct;
+    doc["BatteryRaw"] = batteryRaw;
 
     char buffer[256];
     serializeJsonPretty(doc, Serial);
     Serial.println();
 
     serializeJson(doc, buffer);
-    setup_wifi();
-    client.setServer(broker,port);
+
+    setup_wifi(); //start wifi
+    client.setServer(broker,port); //set mqtt broker
     if (!client.connected()){
       reconnect();
     }
     client.loop();
 
-    client.publish(MQTT_SENSOR_TOPIC, buffer);
-    delay(1000);
-    Serial.println("data published");
+    client.publish(MQTT_SENSOR_TOPIC, buffer); //send data to mqtt
+    delay(1000); //delay to give some time to actually send the data (without delay, data is not sent)
     WiFi.disconnect();
+
     #ifdef esp32
       esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP*uS_TO_S_FACTOR);
       esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
@@ -181,7 +185,7 @@ int getBatteryPercentage(){
     Serial.print(batteryValue);
     Serial.println("V");
 
-    batteryValue = mapf(batteryValue, 1.98, 3.09, 0, 100);
+    batteryValue = mapf(batteryValue, 1.98, 2.65, 0, 100);
     Serial.print("Battery percentage: ");
     Serial.print(int(batteryValue));
     Serial.println("%");
